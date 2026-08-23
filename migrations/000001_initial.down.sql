@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS outbox_events;
+DROP TABLE IF EXISTS idempotency_keys;
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS precheck_plans;
+DROP TABLE IF EXISTS analyses;
+DROP TABLE IF EXISTS script_artifacts;
+DROP TABLE IF EXISTS script_libraries;
+DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS users;
