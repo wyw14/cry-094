@@ -1,0 +1,13 @@
+.env
+bin/
+dist/
+coverage/
+*.log
+*.db
+*.sqlite
+.cache/
+.gocache/
+web/node_modules/
+web/dist/
+.idea/
+.vscode/
