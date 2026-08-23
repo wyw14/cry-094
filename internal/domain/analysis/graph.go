@@ -45,6 +45,10 @@ func NewGraph(nodes []Node, edges []Edge) (Graph, error) {
 	return graph, nil
 }
 
+// TopologicalOrder returns a deterministic execution order for the graph's
+// nodes. When the graph contains a cycle, no valid order exists: the returned
+// order is empty and the second result lists the artifact ids that
+// participate in the detected cycle, so callers can surface them as evidence.
 func (g Graph) TopologicalOrder() ([]string, []string) {
 	children := make(map[string][]string, len(g.Nodes))
 	for _, edge := range g.Edges {
@@ -58,27 +62,51 @@ func (g Graph) TopologicalOrder() ([]string, []string) {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	visited := make(map[string]bool, len(g.Nodes))
-	active := make(map[string]bool, len(g.Nodes))
+	const (
+		white = 0 // unvisited
+		gray  = 1 // on the recursion stack
+		black = 2 // fully processed
+	)
+	color := make(map[string]int, len(g.Nodes))
 	order := make([]string, 0, len(g.Nodes))
+	var cycle []string
+	var stack []string
 	var visit func(string)
 	visit = func(id string) {
-		if visited[id] {
-			return
-		}
-		if active[id] {
-			return
-		}
-		active[id] = true
+		color[id] = gray
+		stack = append(stack, id)
 		for _, child := range children[id] {
-			visit(child)
+			switch color[child] {
+			case black:
+			case gray:
+				// A back edge closes a cycle. Recover the participating nodes by
+				// walking the current recursion stack from the first occurrence
+				// of the back edge's target up to the node that reached it.
+				for i := 0; i < len(stack); i++ {
+					if stack[i] == child {
+						cycle = append(cycle, stack[i:]...)
+						break
+					}
+				}
+			default:
+				visit(child)
+			}
 		}
-		active[id] = false
-		visited[id] = true
+		stack = stack[:len(stack)-1]
+		color[id] = black
 		order = append(order, id)
 	}
 	for _, id := range ids {
-		visit(id)
+		if color[id] == white {
+			visit(id)
+		}
+	}
+	if len(cycle) > 0 {
+		// A cyclic graph has no meaningful execution order; keep only the
+		// participating nodes so downstream tooling cannot mistake a partial
+		// ordering for a trustworthy check sequence.
+		sort.Strings(cycle)
+		return nil, cycle
 	}
 	for left, right := 0, len(order)-1; left < right; left, right = left+1, right-1 {
 		order[left], order[right] = order[right], order[left]

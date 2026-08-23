@@ -31,7 +31,10 @@ type CapabilityCheck struct {
 func NewResult(id, libraryID string, graph Graph, issues []Issue, artifactHash, parserBuild string, now time.Time) Result {
 	order, cycle := graph.TopologicalOrder()
 	if len(cycle) > 0 {
-		issues = append(issues, Issue{Kind: IssueCycle, Severity: SeverityWarning,
+		// A dependency cycle makes a trustworthy execution order impossible, so
+		// it must block orchestration. The participating node ids are retained
+		// as evidence so reviewers can see exactly which scripts are involved.
+		issues = append(issues, Issue{Kind: IssueCycle, Severity: SeverityBlocking,
 			Summary:  "script dependency graph contains a cycle",
 			Evidence: cycleEvidence(cycle), Resolution: "break the reported data dependency cycle"})
 	}
@@ -43,7 +46,7 @@ func NewResult(id, libraryID string, graph Graph, issues []Issue, artifactHash, 
 func transitionStatus(issues []Issue) Status {
 	status := StatusReady
 	for _, issue := range issues {
-		if issue.BlocksOrchestration() && issue.Kind != IssueCycle {
+		if issue.BlocksOrchestration() {
 			status = StatusBlocked
 			break
 		}
