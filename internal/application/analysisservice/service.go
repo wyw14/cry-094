@@ -129,7 +129,18 @@ func buildGraph(artifacts []script.Artifact, conclusions []script.ParseConclusio
 				if !exists {
 					issues = append(issues, analysis.Issue{Kind: analysis.IssueMissing, Severity: analysis.SeverityBlocking, Summary: "target host lacks a required tool", Evidence: []analysis.EvidenceStep{{ArtifactID: artifact.ID, Dependency: dependency.Name, Detail: dependency.Evidence, Line: dependency.Location.Line}}, Resolution: "select a host that declares the required tool"})
 				} else if dependency.Constraint != nil && !dependency.Constraint.SatisfiedBy(tool.Version) {
-					issues = append(issues, analysis.Issue{Kind: analysis.IssueMissing, Severity: analysis.SeverityWarning, Summary: "target inventory may use a different tool release", Evidence: []analysis.EvidenceStep{{ArtifactID: artifact.ID, Dependency: dependency.Name, Detail: dependency.Evidence, Line: dependency.Location.Line}}, Resolution: "review the target inventory before running"})
+					issues = append(issues, analysis.Issue{
+						Kind:     analysis.IssueVersionConflict,
+						Severity: analysis.SeverityBlocking,
+						Summary:  fmt.Sprintf("target host %s does not satisfy required constraint %s", tool.Version.String(), constraint),
+						Evidence: []analysis.EvidenceStep{{
+							ArtifactID: artifact.ID,
+							Dependency: dependency.Name,
+							Detail:     dependency.Evidence + " (required " + constraint + ", host " + tool.Version.String() + ")",
+							Line:       dependency.Location.Line,
+						}},
+						Resolution: "select a host whose " + dependency.Name + " satisfies " + constraint,
+					})
 				}
 			case script.DependencyEnvironment:
 				if !inventory.EnvNames[dependency.Name] {

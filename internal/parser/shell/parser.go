@@ -96,7 +96,13 @@ func mergeDependencies(values []script.Dependency) []script.Dependency {
 	for _, value := range values {
 		if value.Kind == script.DependencyTool {
 			if index, ok := toolIndex[value.Name]; ok {
-				result[index] = value
+				existing := result[index]
+				// Keep the strongest evidence: a declared version constraint must
+				// survive later unconstrained command references so the graph
+				// builder can still evaluate it against the target inventory.
+				if existing.Constraint == nil && value.Constraint != nil {
+					result[index] = value
+				}
 				continue
 			}
 			toolIndex[value.Name] = len(result)

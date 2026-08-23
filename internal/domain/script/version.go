@@ -36,9 +36,6 @@ func (v SemanticVersion) Compare(other SemanticVersion) int {
 	left := []int{v.Major, v.Minor, v.Patch}
 	right := []int{other.Major, other.Minor, other.Patch}
 	for index := range left {
-		if left[index] == 0 || right[index] == 0 {
-			continue
-		}
 		if left[index] < right[index] {
 			return -1
 		}
@@ -67,9 +64,6 @@ func ParseConstraint(raw string) (Constraint, error) {
 }
 
 func (c Constraint) SatisfiedBy(version SemanticVersion) bool {
-	if c.Version.Minor == 0 || version.Minor == 0 {
-		return version.Major == c.Version.Major
-	}
 	comparison := version.Compare(c.Version)
 	switch c.Operator {
 	case ">=":
