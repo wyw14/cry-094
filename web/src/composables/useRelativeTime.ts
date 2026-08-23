@@ -1,0 +1,2 @@
+import { computed, type Ref } from 'vue'
+export function useRelativeTime(value: Ref<string>) { return computed(() => { const seconds = Math.round((Date.now() - new Date(value.value).getTime()) / 1000); if (seconds < 60) return `${seconds} 秒前`; if (seconds < 3600) return `${Math.floor(seconds/60)} 分钟前`; return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(value.value)) }) }
