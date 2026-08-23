@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/wyw14/cry-094/internal/domain/common"
 	"github.com/wyw14/cry-094/internal/domain/identity"
 )
 
@@ -62,11 +63,14 @@ func (r *IdentityRepo) RevokeRefresh(_ context.Context, value *identity.RefreshT
 	if !ok {
 		return fmt.Errorf("refresh token not found")
 	}
-	if stored.RevokedAt != nil {
-		return nil
-	}
 	if value.RevokedAt == nil {
 		return fmt.Errorf("refresh token revocation timestamp required")
+	}
+	if stored.RevokedAt != nil {
+		// Already claimed by a concurrent refresh: fail-closed so only one
+		// refresh can mint successor credentials. Mirrors the conditional
+		// `WHERE revoked_at IS NULL` used by the postgres repository.
+		return common.ErrConflict
 	}
 	copy := *stored
 	revokedAt := *value.RevokedAt

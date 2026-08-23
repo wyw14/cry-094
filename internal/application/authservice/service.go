@@ -53,13 +53,20 @@ func (s *Service) Refresh(ctx context.Context, plain string) (Tokens, error) {
 	if !record.Usable(plain, now) {
 		return Tokens{}, fmt.Errorf("refresh token is not usable")
 	}
-	rotated, err := s.issue(ctx, record.UserID)
-	if err != nil {
-		return Tokens{}, fmt.Errorf("issue rotated credentials: %w", err)
-	}
+	// Atomically claim the refresh token by revoking it before minting the
+	// successor. RevokeRefresh is conditional on revoked_at being NULL, so of two
+	// concurrent refreshes for the same token only one can win the claim; the
+	// loser gets ErrConflict and must not mint a second set of credentials.
+	// Revoking before issuing is intentionally fail-closed: if issuing fails the
+	// token is consumed and the caller must re-authenticate rather than risk a
+	// double-spend window where two usable successors exist.
 	record.Revoke(now)
 	if err := s.repo.RevokeRefresh(ctx, record); err != nil {
 		return Tokens{}, err
+	}
+	rotated, err := s.issue(ctx, record.UserID)
+	if err != nil {
+		return Tokens{}, fmt.Errorf("issue rotated credentials: %w", err)
 	}
 	return rotated, nil
 }
